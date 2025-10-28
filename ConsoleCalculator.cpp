@@ -8,6 +8,8 @@
 #include <map>
 #include <limits>
 #include <stdexcept>
+#include <fstream>
+#include <cstdlib>
 
 int continue_ = 0;
 
@@ -16,6 +18,12 @@ enum class Mode {
     MODE_ARGUMENT,
     MODE_INLINE_SINGLE,
     MODE_INLINE_MULTIPLE
+};
+
+enum class Modifiers {
+    S,
+    M,
+    A
 };
 
 // Apply binary operators: +, -, *, /, ^
@@ -199,29 +207,25 @@ void askContinue() {
     }
 }
 
-int main(int argc, char* argv[]) {
-    // Capture command-line arguments and determine mode
-    std::string firstArg;
-    if (argc > 1) {
-        firstArg = argv[1];
-    }
+// Append expression (only) to ~/.calchistory. If HOME is not available or
+// the file cannot be opened, this is a no-op.
+void writeHistory(const std::string& expr) {
+    if (expr.empty()) return;
+    const char* home = std::getenv("HOME");
+    if (!home) return;
+    std::string path = std::string(home) + "/.calchistory";
+    std::ofstream ofs(path, std::ios::app);
+    if (!ofs) return;
+    ofs << expr << '\n';
+}
 
-    // Determine mode by number of arguments:
-    // argc == 1 -> interactive single-line (MODE_INLINE_SINGLE)
-    // argc == 2 -> argument mode (MODE_ARGUMENT)
-    // argc > 2  -> inline multiple (MODE_INLINE_MULTIPLE)
-    Mode mode = Mode::MODE_INLINE_SINGLE;
-    if (argc == 2) mode = Mode::MODE_ARGUMENT;
-    else if (argc > 2) mode = Mode::MODE_INLINE_MULTIPLE;
-
-    // (The program still runs interactively; firstArg and mode are now available
-    // for future use. This change satisfies the request to read arguments and
-    // expose the first argument and modes.)
-
+void InlineMultipleMode(){
     while (continue_ == 0) {
         std::string line;
         std::cout << "Enter expression: ";
         std::getline(std::cin, line);
+        // store expression in history
+        writeHistory(line);
 
         try {
             if (!checkParentheses(line))
@@ -229,7 +233,7 @@ int main(int argc, char* argv[]) {
 
             auto tokens = tokenize(line);
             double result = evaluate(tokens);
-            std::cout << "Result: " << result << "\n";
+            std::cout << result << "\n";
         }
         catch (const std::exception& e) {
             std::cerr << e.what() << "\n";
@@ -237,5 +241,120 @@ int main(int argc, char* argv[]) {
         std::cout << "------------------------" << std::endl;
         //askContinue();
     }
+}
+
+void InlineSingleMode(){
+    std::string line;
+    std::cout << "Enter expression: ";
+    std::getline(std::cin, line);
+    // store expression in history
+    writeHistory(line);
+
+    try {
+        if (!checkParentheses(line))
+            throw std::runtime_error("Error: Mismatched parentheses.");
+
+        auto tokens = tokenize(line);
+        double result = evaluate(tokens);
+        std::cout << result << "\n";
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << "\n";
+    }
+}
+
+void argumentMode(std::string arg){
+    // store expression in history
+    writeHistory(arg);
+    try {
+        if (!checkParentheses(arg))
+            throw std::runtime_error("Error: Mismatched parentheses.");
+
+        auto tokens = tokenize(arg);
+        double result = evaluate(tokens);
+        std::cout << result << "\n";
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << "\n";
+    }
+}
+
+int main(int argc, char* argv[]) {
+    std::string firstArg;
+    if (argc > 1) {
+        firstArg = argv[1];
+    }
+    // Default to inline-single mode when no flags are provided
+    Mode mode = Mode::MODE_INLINE_SINGLE;
+
+    bool sawSetVar = false;
+    bool sawClearVar = false;
+    int flagCount = 0; // count known modifier flags; only one allowed
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "-s") {
+            mode = Mode::MODE_INLINE_SINGLE;
+            ++flagCount;
+            continue;
+        }
+        if (a == "-m") {
+            mode = Mode::MODE_INLINE_MULTIPLE;
+            ++flagCount;
+            continue;
+        }
+        if (a == "-a") {
+            mode = Mode::MODE_ARGUMENT;
+            ++flagCount;
+            continue;
+        }
+    }
+
+    // Enforce only one known flag at a time
+    if (flagCount > 1) {
+        std::cerr << "Error: Only one flag may be provided at a time.\n";
+        return 1;
+    }
+    // If there are arguments but no known modifier flags, treat all argv
+    // elements (1..argc-1) as a single expression and evaluate it.
+    if (flagCount == 0 && argc > 1) {
+        std::ostringstream oss;
+        for (int i = 1; i < argc; ++i) {
+            if (i > 1) oss << ' ';
+            oss << argv[i];
+        }
+        argumentMode(oss.str());
+        return 0;
+    }
+
+    // Dispatch based on selected mode
+    switch (mode) {
+    case Mode::MODE_INLINE_SINGLE:
+        InlineSingleMode();
+        break;
+    case Mode::MODE_INLINE_MULTIPLE:
+        InlineMultipleMode();
+        break;
+    case Mode::MODE_ARGUMENT: {
+        // Build expression from non-flag argv elements (ignore known flags)
+        std::ostringstream oss;
+        for (int i = 1; i < argc; ++i) {
+            std::string a = argv[i];
+            if (!a.empty() && a[0] == '-') continue; // skip flags
+            if (oss.tellp() > 0) oss << ' ';
+            oss << a;
+        }
+        if (oss.tellp() > 0) {
+            argumentMode(oss.str());
+        }
+        else if (!firstArg.empty()) {
+            argumentMode(firstArg);
+        }
+        else {
+            // No argument provided; fall back to inline single prompt
+            InlineSingleMode();
+        }
+    } break;
+    }
+
     return 0;
 }
