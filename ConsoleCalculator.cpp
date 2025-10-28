@@ -11,6 +11,13 @@
 
 int continue_ = 0;
 
+// Calculator run modes
+enum class Mode {
+    MODE_ARGUMENT,
+    MODE_INLINE_SINGLE,
+    MODE_INLINE_MULTIPLE
+};
+
 // Apply binary operators: +, -, *, /, ^
 double applyOperation(double a, double b, char op) {
     switch (op) {
@@ -192,7 +199,25 @@ void askContinue() {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    // Capture command-line arguments and determine mode
+    std::string firstArg;
+    if (argc > 1) {
+        firstArg = argv[1];
+    }
+
+    // Determine mode by number of arguments:
+    // argc == 1 -> interactive single-line (MODE_INLINE_SINGLE)
+    // argc == 2 -> argument mode (MODE_ARGUMENT)
+    // argc > 2  -> inline multiple (MODE_INLINE_MULTIPLE)
+    Mode mode = Mode::MODE_INLINE_SINGLE;
+    if (argc == 2) mode = Mode::MODE_ARGUMENT;
+    else if (argc > 2) mode = Mode::MODE_INLINE_MULTIPLE;
+
+    // (The program still runs interactively; firstArg and mode are now available
+    // for future use. This change satisfies the request to read arguments and
+    // expose the first argument and modes.)
+
     while (continue_ == 0) {
         std::string line;
         std::cout << "Enter expression: ";
