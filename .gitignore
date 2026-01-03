@@ -362,10 +362,13 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 *.sln
-*.vcxproj
-*.filters
+*.vcxproj*
 
 calc 
 calc.exe
 
 .vscode/
+
+.DS_Store
+Thumbs.db
+Desktop.ini
