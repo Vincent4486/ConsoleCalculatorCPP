@@ -222,7 +222,7 @@ void writeHistory(const std::string& expr) {
 void InlineMultipleMode(){
     while (continue_ == 0) {
         std::string line;
-        std::cout << "Enter expression: ";
+        std::cout << ">>> ";
         std::getline(std::cin, line);
         // store expression in history
         writeHistory(line);
@@ -238,14 +238,12 @@ void InlineMultipleMode(){
         catch (const std::exception& e) {
             std::cerr << e.what() << "\n";
         }
-        std::cout << "------------------------" << std::endl;
-        //askContinue();
     }
 }
 
 void InlineSingleMode(){
     std::string line;
-    std::cout << "Enter expression: ";
+    std::cout << ">>> ";
     std::getline(std::cin, line);
     // store expression in history
     writeHistory(line);
@@ -297,16 +295,29 @@ int main(int argc, char* argv[]) {
             ++flagCount;
             continue;
         }
-        if (a == "-m") {
+	else if (a == "-m") {
             mode = Mode::MODE_INLINE_MULTIPLE;
             ++flagCount;
             continue;
         }
-        if (a == "-a") {
+	else if (a == "-a") {
             mode = Mode::MODE_ARGUMENT;
             ++flagCount;
             continue;
         }
+	else if (a == "-h" || a == "--help") {
+	    std::cout << "Usage: calc [options] [expression]\n"
+		      << "Options:\n"
+		      << "  -s          Inline single prompt mode (default)\n"
+		      << "  -m          Inline multiple prompt mode\n"
+		      << "  -a          Argument mode (evaluate expression from command line)\n"
+		      << "  -h, --help  Show this help message\n";
+	    return 0;
+	}
+	else if (a.rfind("-", 0) == 0) {
+	    std::cerr << "Error: Unknown flag '" << a << "'.\n";
+	    return 1;
+	}
     }
 
     // Enforce only one known flag at a time
