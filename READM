@@ -1,0 +1,68 @@
+=====================================================
+                   The Calculators                   
+=====================================================
+                                                     
+  The calculators project is the way I used to explore
+new programming languages, since creating a calculator
+requires me to understand the concepts of reading and
+writing to stream, error handling and more.
+
+  So in this project I will implement the calculators
+in the programming languages I could think of using
+the folloeing standards, I would also not use LLM to
+write any code for this project is it just for me to
+explore.
+
+  Also use this project at your own risk as it could
+contain unfinished features and bugs. Your are
+welcomed to open any issues about the code on GitHub,
+but I will not accept any pull requests changing the
+source code.
+
+                      Standards                      
+
+Modes
+
+Each calculator has to contain 2 modes, which is 
+determined base on arguments
+
+- Argument mode: Specifies the expression in
+  arguments, used when detected there are arguments in 
+  `argv`.
+- Interactive mode: Expressions are entered after
+  program started, or piped to `stdin` of the program. 
+  Used when no arguments are added
+
+Tokenization
+                                                     
+All calculators should support both the expression
+being seperated via spaces like `1 + 1 / 2` or the
+expression combined like `1+1/2`, which leads to the
+need of tokenization when expressions are in combined
+mode.
+
+Calculation Order
+
+Variables
+
+History Saving & Keyboard Input Manipulation
+
+Error Handling
+
+Signal Handling
+
+Functions & Advanced Mathmatical Operations
+
+                  Current Status                     |
+
+Languages Implemented
+
+- C++: Most support
+- Swift: Intermediate support
+- Rust: Intermediate support
+
+Languages Planned
+
+- Java
+- C
+- Python
