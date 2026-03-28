@@ -1,104 +1,73 @@
-=====================================================
-                   The Calculators                   
-=====================================================
-                                                     
-  The calculators project is the way I used to explore
-new programming languages, since creating a calculator
-requires me to understand the concepts of reading and
-writing to stream, error handling and more.
+================================================================================
+                                The Calculators
+================================================================================
 
-  So in this project I will implement the calculators
-in the programming languages I could think of using
-the folloeing standards, I would also not use LLM to
-write any code for this project is it just for me to
-explore.
+The calculators project is the way I use to explore new programming languages,
+since creating a calculator requires me to understand the concepts of reading
+and writing to streams, error handling, and more.
 
-  Also use this project at your own risk as it could
-contain unfinished features and bugs. Your are
-welcomed to open any issues about the code on GitHub,
-but I will not accept any pull requests changing the
-source code.
+In this project, I will implement calculators in the programming languages I
+can think of using the following standards. I will not use an LLM to write any
+code for this project, as it is intended for my own exploration.
 
-                      Standards                      
+Use this project at your own risk, as it could contain unfinished features and
+bugs. You are welcome to open issues about the code on GitHub, but I will not
+be accepting pull requests that change the source code.
+
+                                   Standards
 
 Modes
+Each calculator must contain two modes, determined based on arguments:
 
-Each calculator has to contain 2 modes, which is 
-determined base on arguments
-
-- Argument mode: Specifies the expression in
-  arguments, used when detected there are arguments in 
-  `argv`.
-- Interactive mode: Expressions are entered after
-  program started, or piped to `stdin` of the program. 
-  Used when no arguments are added
+- Argument mode: Specifies the expression in arguments; used when arguments are
+  detected in `argv`.
+- Interactive mode: Expressions are entered after the program starts or piped 
+  to `stdin`. Used when no arguments are added.
 
 Tokenization
-                                                     
-All calculators should support both the expression
-being seperated via spaces like `1 + 1 / 2` or the
-expression combined like `1+1/2`, which leads to the
-need of tokenization when expressions are in combined
-mode.
+All calculators should support expressions separated by spaces (e.g., 1 + 1 / 2)
+or combined (e.g., 1+1/2). This requires tokenization when expressions are in 
+combined mode.
 
 Calculation Order
-
-This calculator supports multi-step expressions
-like `1+1/2` where the calculator will first handle
-division and then addition. This will be archived
-mostly using array lists or other types of compoud
-data types.
+This calculator supports multi-step expressions like `1+1/2` where the 
+calculator will first handle division and then addition. This will be achieved
+mostly using array lists or other compound data types.
 
 Variables
-
-Both environment variabls and local variables within
-the calculator can be accessed via their names and a
-`$` in front.
-
-Standard variables like `pi` should be pre-defined
-locally.
+Both environment variables and local variables within the calculator can be 
+accessed via their names with a `$` prefix. Standard variables like `pi` 
+should be pre-defined locally.
 
 History Saving & Keyboard Input Manipulation
-
-All calculations made will be stored in the file
-`~/.calchistory`, and this will only be written
-until the application will quit. Then if the user
-press the up or down arrow keys, the application
-will intercept the key stroke and append the
+All calculations made will be stored in the file `~/.calchistory`. This will 
+only be written when the application quits. If the user presses the up or down
+arrow keys, the application will intercept the keystroke and append the 
 history.
 
 Error Handling
-
-When there are syntax errors or illegal operations
-detected, the application will throw an exception 
-usually to the programming languages' error handing
-system. If none then it will be self handled.
+When syntax errors or illegal operations are detected, the application will 
+throw an exception—usually to the language's native error handling system. 
+If none exists, it will be self-handled.
 
 Signal Handling
+The calculators should handle `SIGINT` to quit the application and write the 
+calculation history.
 
-The calculators should handle `SIGINT` for quitting
-the application and write the calc history.
+Advanced Mathematical Operations
+The calculators should support a variety of advanced mathematical operations 
+such as `sin()` and `tan()`. Use of the program's mathematical library is 
+allowed. The syntax for these matches standard function calls, such as 
+`tan(1+2)`.
 
-Advanced Mathmatical Operations
-
-The calculators should support a variation of
-advanced mathmatical operations such as `sin()`
-and `tan()`, the use of the program's mathmatical
-library is allowed.
-
-The syntax for these are the same as calling functions
-where it will look like `tan(1+2)` in calc.
-
-                  Current Status                     
+                                 Current Status
 
 Languages Implemented
-
-- C++: Most support
+- C++: Full support
 - Swift: Intermediate support
 - Rust: Intermediate support
 
 Languages Planned
-
 - Java
 - C
 - Python
