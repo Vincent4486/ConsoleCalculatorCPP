@@ -43,17 +43,53 @@ mode.
 
 Calculation Order
 
+This calculator supports multi-step expressions
+like `1+1/2` where the calculator will first handle
+division and then addition. This will be archived
+mostly using array lists or other types of compoud
+data types.
+
 Variables
+
+Both environment variabls and local variables within
+the calculator can be accessed via their names and a
+`$` in front.
+
+Standard variables like `pi` should be pre-defined
+locally.
 
 History Saving & Keyboard Input Manipulation
 
+All calculations made will be stored in the file
+`~/.calchistory`, and this will only be written
+until the application will quit. Then if the user
+press the up or down arrow keys, the application
+will intercept the key stroke and append the
+history.
+
 Error Handling
+
+When there are syntax errors or illegal operations
+detected, the application will throw an exception 
+usually to the programming languages' error handing
+system. If none then it will be self handled.
 
 Signal Handling
 
-Functions & Advanced Mathmatical Operations
+The calculators should handle `SIGINT` for quitting
+the application and write the calc history.
 
-                  Current Status                     |
+Advanced Mathmatical Operations
+
+The calculators should support a variation of
+advanced mathmatical operations such as `sin()`
+and `tan()`, the use of the program's mathmatical
+library is allowed.
+
+The syntax for these are the same as calling functions
+where it will look like `tan(1+2)` in calc.
+
+                  Current Status                     
 
 Languages Implemented
 
