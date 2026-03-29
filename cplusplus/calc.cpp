@@ -2,6 +2,7 @@
 #include <sstream>
 #include <string>
 #include <cctype>
+#include <csignal>
 #include <vector>
 #include <stack>
 #include <cmath>
@@ -11,20 +12,49 @@
 #include <fstream>
 #include <cstdlib>
 
-int continue_ = 0;
+class History {
+private:
+    std::string path;
+    std::ostringstream dataCached;
+
+    std::string getHistoryPath(){
+        const char* home = std::getenv("HOME");
+        if (!home) return "\0";
+        return std::string(home) + "/.calchistory";
+    }
+
+public:
+    History() : path(this->getHistoryPath()) {}
+
+    // Append expression (only) to ~/.calchistory. If HOME is not available or
+    // the file cannot be opened, this is a no-op.
+    void write(const std::string& expr) {
+        if (expr.empty()) return;
+        dataCached << expr << '\n';
+    }
+
+    void flush(){
+        std::ofstream ofs(path);
+        ofs << dataCached.str();
+        ofs.close();
+    }
+};
+
+// Global pointer to History for signal handler access
+History* g_history = nullptr;
 
 // Calculator run modes
 enum class Mode {
     MODE_ARGUMENT,
-    MODE_INLINE_SINGLE,
-    MODE_INLINE_MULTIPLE
+    MODE_INTERACTIVE
 };
 
-enum class Modifiers {
-    S,
-    M,
-    A
-};
+void signalHandler(int sig) {
+    if (g_history) {
+        g_history->flush();
+    }
+    exit(sig);
+}
 
 // Apply binary operators: +, -, *, /, ^
 double applyOperation(double a, double b, char op) {
@@ -195,37 +225,12 @@ double evaluate(const std::vector<std::string>& tokens) {
     return evaluateExpression(it, tokens.end());
 }
 
-// Prompt to continue or exit
-void askContinue() {
-    char c;
-    std::cout << "---------------------\nContinue? (y/n): ";
-    std::cin >> c;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    if (c == 'n' || c == 'N') {
-        continue_ = 1;
-        std::cout << "Exiting...\n";
-    }
-}
-
-// Append expression (only) to ~/.calchistory. If HOME is not available or
-// the file cannot be opened, this is a no-op.
-void writeHistory(const std::string& expr) {
-    if (expr.empty()) return;
-    const char* home = std::getenv("HOME");
-    if (!home) return;
-    std::string path = std::string(home) + "/.calchistory";
-    std::ofstream ofs(path, std::ios::app);
-    if (!ofs) return;
-    ofs << expr << '\n';
-}
-
-void InlineMultipleMode(){
-    while (continue_ == 0) {
+void interactiveMode(History& history){
+    for(;;) {
         std::string line;
-        std::cout << ">>> ";
         std::getline(std::cin, line);
         // store expression in history
-        writeHistory(line);
+        history.write(line);
 
         try {
             if (!checkParentheses(line))
@@ -241,29 +246,9 @@ void InlineMultipleMode(){
     }
 }
 
-void InlineSingleMode(){
-    std::string line;
-    std::cout << ">>> ";
-    std::getline(std::cin, line);
+void argumentMode(History& history, const std::string& arg){
     // store expression in history
-    writeHistory(line);
-
-    try {
-        if (!checkParentheses(line))
-            throw std::runtime_error("Error: Mismatched parentheses.");
-
-        auto tokens = tokenize(line);
-        double result = evaluate(tokens);
-        std::cout << result << "\n";
-    }
-    catch (const std::exception& e) {
-        std::cerr << e.what() << "\n";
-    }
-}
-
-void argumentMode(std::string arg){
-    // store expression in history
-    writeHistory(arg);
+    history.write(arg);
     try {
         if (!checkParentheses(arg))
             throw std::runtime_error("Error: Mismatched parentheses.");
@@ -278,93 +263,35 @@ void argumentMode(std::string arg){
 }
 
 int main(int argc, char* argv[]) {
-    std::string firstArg;
-    if (argc > 1) {
-        firstArg = argv[1];
-    }
+    History history;
+    g_history = &history;
+
+    // Register signal handlers to flush history on interrupt
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
     // Default to inline-single mode when no flags are provided
-    Mode mode = Mode::MODE_INLINE_SINGLE;
+    Mode mode = Mode::MODE_INTERACTIVE;
 
-    bool sawSetVar = false;
-    bool sawClearVar = false;
-    int flagCount = 0; // count known modifier flags; only one allowed
-    for (int i = 1; i < argc; ++i) {
-        std::string a = argv[i];
-        if (a == "-s") {
-            mode = Mode::MODE_INLINE_SINGLE;
-            ++flagCount;
-            continue;
-        }
-	else if (a == "-m") {
-            mode = Mode::MODE_INLINE_MULTIPLE;
-            ++flagCount;
-            continue;
-        }
-	else if (a == "-a") {
-            mode = Mode::MODE_ARGUMENT;
-            ++flagCount;
-            continue;
-        }
-	else if (a == "-h" || a == "--help") {
-	    std::cout << "Usage: calc [options] [expression]\n"
-		      << "Options:\n"
-		      << "  -s          Inline single prompt mode (default)\n"
-		      << "  -m          Inline multiple prompt mode\n"
-		      << "  -a          Argument mode (evaluate expression from command line)\n"
-		      << "  -h, --help  Show this help message\n";
-	    return 0;
-	}
-	else if (a.rfind("-", 0) == 0) {
-	    std::cerr << "Error: Unknown flag '" << a << "'.\n";
-	    return 1;
-	}
-    }
-
-    // Enforce only one known flag at a time
-    if (flagCount > 1) {
-        std::cerr << "Error: Only one flag may be provided at a time.\n";
-        return 1;
-    }
     // If there are arguments but no known modifier flags, treat all argv
     // elements (1..argc-1) as a single expression and evaluate it.
-    if (flagCount == 0 && argc > 1) {
-        std::ostringstream oss;
+    std::ostringstream oss;
+    if (argc > 1) {
+        mode = Mode::MODE_ARGUMENT;
         for (int i = 1; i < argc; ++i) {
             if (i > 1) oss << ' ';
             oss << argv[i];
         }
-        argumentMode(oss.str());
-        return 0;
     }
 
     // Dispatch based on selected mode
     switch (mode) {
-    case Mode::MODE_INLINE_SINGLE:
-        InlineSingleMode();
+    case Mode::MODE_INTERACTIVE:
+        interactiveMode(history);
         break;
-    case Mode::MODE_INLINE_MULTIPLE:
-        InlineMultipleMode();
+    case Mode::MODE_ARGUMENT:
+        argumentMode(history, oss.str());
         break;
-    case Mode::MODE_ARGUMENT: {
-        // Build expression from non-flag argv elements (ignore known flags)
-        std::ostringstream oss;
-        for (int i = 1; i < argc; ++i) {
-            std::string a = argv[i];
-            if (!a.empty() && a[0] == '-') continue; // skip flags
-            if (oss.tellp() > 0) oss << ' ';
-            oss << a;
-        }
-        if (oss.tellp() > 0) {
-            argumentMode(oss.str());
-        }
-        else if (!firstArg.empty()) {
-            argumentMode(firstArg);
-        }
-        else {
-            // No argument provided; fall back to inline single prompt
-            InlineSingleMode();
-        }
-    } break;
     }
 
     return 0;
