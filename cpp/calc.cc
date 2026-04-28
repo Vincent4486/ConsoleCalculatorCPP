@@ -12,6 +12,18 @@
 #include <fstream>
 #include <cstdlib>
 
+#if defined(_WIN32)
+    #include <conio.h>
+#elif defined(__linux__)
+    #include <termios.h>
+#elif defined(__APPLE__)
+    #include <termios.h>
+#else
+    #error "Unknown OS"
+#endif
+
+#include <unistd.h>
+
 class History {
 private:
     std::string path;
@@ -42,6 +54,9 @@ public:
 
 // Global pointer to History for signal handler access
 History* g_history = nullptr;
+// Saved terminal state and flag for async-signal-safe restore
+static struct termios g_saved_termios;
+static volatile sig_atomic_t g_termios_saved = 0;
 
 // Calculator run modes
 enum class Mode {
@@ -50,10 +65,17 @@ enum class Mode {
 };
 
 void signalHandler(int sig) {
+    // Restore terminal if we switched it to raw-like mode
+    if (g_termios_saved) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &g_saved_termios);
+        g_termios_saved = 0;
+    }
+
     if (g_history) {
         g_history->flush();
     }
-    exit(sig);
+
+    _exit(128 + sig);
 }
 
 // Apply binary operators: +, -, *, /, ^
@@ -227,8 +249,44 @@ double evaluate(const std::vector<std::string>& tokens) {
 
 void interactiveMode(History& history){
     for(;;) {
-        std::string line;
-        std::getline(std::cin, line);
+        std::string line; // Using string is easier to manipulate than ostringstream here
+        struct termios oldt, newt;
+        tcgetattr(STDIN_FILENO, &oldt);
+        g_saved_termios = oldt;
+        g_termios_saved = 1;
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+        char c;
+        while (std::cin.get(c)) {
+            if (c == '\033') {
+                std::cin.get(c);
+                std::cin.get(c);
+                if (c == 'A') {
+                    line = "previous_command"; 
+
+                    std::cout << "\033[2K\r" << line << std::flush;
+                }
+            } 
+            else if (c == 127 || c == '\b') {
+                if (!line.empty()) {
+                    line.pop_back();
+                    std::cout << "\033[1D\033[0K" << std::flush;
+                }
+            }
+            else if (c == '\n' || c == '\r') {
+                std::cout << std::endl;
+                break;
+            } 
+            else {
+                line += c;
+                std::cout << c << std::flush;
+            }
+        }
+
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        g_termios_saved = 0;
         // store expression in history
         history.write(line);
 
